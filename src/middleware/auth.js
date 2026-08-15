@@ -4,26 +4,35 @@ const User = require('../models/User');
 async function protect(req, res, next) {
   let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
+  const authHeader=req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith('Bearer')) {
+    token = authHeader.split('')[1];
   }
 
   if (!token) {
-    return res.status(401).json({ message: 'Not authorized, no token provided' });
+    res.status(401).json({message: 'Not authorized, no token provided'});
+    return;
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id);
+  
 
-    if (!req.user) {
-      return res.status(401).json({ message: 'User attached to token no longer exists' });
-    }
-
-    next();
-  } catch (err) {
-    return res.status(401).json({ message: 'Not authorized, token invalid or expired' });
+  if (!user) {
+    res.status(401).json({message: 'User attached to token no longer exists'});
+    return;
   }
+
+  req.user = user;
+  next();
 }
+
+catch (error) {
+  res.status(401).json({message: 'Not authorized, token invalid or expired'});
+}
+}
+
 
 module.exports = protect;
